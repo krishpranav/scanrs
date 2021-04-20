@@ -37,4 +37,34 @@ fn main() {
         print!("{}", opts.usage(&brief));
         return;
     }
+
+    let num_threads = match matches.opt_str("j") {
+        Some(j) => j.parse().expect("flag -j must be an integer"),
+        None => 4,
+    }
+
+    let addr = IpAddr::from_str(&matches.free[0])
+        .expect("IPADDR must be valid ipv4 or ipv6 address");
+
+    let (tx, rx) = channel();
+    for i in 0..num_threads {
+        let tx = tx.clone();
+
+        thread::spawn(move || {
+            scan(tx, i, addr, num_threads);
+        });
+    }
+
+    let mut out = vec![];
+    drop(tx);
+    for port in rx {
+        out.push(port);
+    }
+
+    println!("");
+    out.sort();
+    for v in out {
+        println!("{} is open", v);
+    }
 }
+
